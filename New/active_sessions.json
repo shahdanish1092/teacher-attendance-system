@@ -1,0 +1,68 @@
+{
+  "bf2ea869": {
+    "teacher": "p.n",
+    "lecture": "ML",
+    "subnet": "192.168.77.",
+    "created_at": "2025-10-30 12:05:40",
+    "expires_at": "2025-10-30 12:20:40"
+  },
+  "716d82f9": {
+    "teacher": "p.n",
+    "lecture": "ML",
+    "subnet": "192.168.77.",
+    "created_at": "2025-10-30 12:11:43",
+    "expires_at": "2025-10-30 12:26:43"
+  },
+  "0c7f92f2": {
+    "teacher": "p.n",
+    "lecture": "ML",
+    "subnet": "192.168.77.",
+    "created_at": "2025-10-30 12:12:30",
+    "expires_at": "2025-10-30 12:27:30"
+  },
+  "5ac20d00": {
+    "teacher": "p.n",
+    "lecture": "ML",
+    "subnet": "192.168.77.",
+    "created_at": "2025-10-30 13:04:30",
+    "expires_at": "2025-10-30 13:19:30"
+  },
+  "d2c6ae70": {
+    "teacher": "p.n",
+    "lecture": "ML",
+    "subnet": "192.168.77.",
+    "created_at": "2025-10-30 13:11:07",
+    "expires_at": "2025-10-30 13:26:07"
+  },
+  "3bf4c0f1": {
+    "teacher": "p.n",
+    "lecture": "ML",
+    "subnet": "192.168.77.",
+    "created_at": "2025-10-30 13:13:26",
+    "expires_at": "2025-10-30 13:28:26"
+  },
+  "a1061f6e": {
+    "teacher": "p.n",
+    "teacher_name": "Praisein",
+    "subnet": "192.168.226.",
+    "subject": "Maths",
+    "created_at": "2025-10-30 19:45:35",
+    "expires_at": "2025-10-30 19:55:35"
+  },
+  "e3ffb984": {
+    "teacher": "p.n",
+    "teacher_name": "Praisein",
+    "subnet": "192.168.226.166",
+    "subject": "Maths",
+    "created_at": "2025-10-30 19:48:23",
+    "expires_at": "2025-10-30 19:58:23"
+  },
+  "ca18655e": {
+    "teacher": "p.n",
+    "teacher_name": "Praisein",
+    "subnet": "192.168.226.",
+    "subject": "ML",
+    "created_at": "2025-10-30 20:48:12",
+    "expires_at": "2025-10-30 20:58:12"
+  }
+}

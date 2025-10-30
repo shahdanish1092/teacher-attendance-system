@@ -1,0 +1,116 @@
+{
+  "students": {
+    "CS203": {
+      "student_id": "CS203",
+      "name": "Praisein Nadar",
+      "year": 2,
+      "subjects": [
+        "ML",
+        "HTML"
+      ],
+      "image_path": "student_images/CS203.png",
+      "major": "Computer Science",
+      "starting_year": 2025,
+      "total_attendance": 3,
+      "last_attendance_time": "2025-10-26 16:22:44"
+    },
+    "CS201": {
+      "student_id": "CS201",
+      "name": "Shah Danish",
+      "year": 2,
+      "subjects": [
+        "ML",
+        "Java",
+        "CL"
+      ],
+      "image_path": "student_images/CS201.png",
+      "major": "Computer Science",
+      "starting_year": 2023
+    },
+    "CS202": {
+      "student_id": "CS202",
+      "name": "Karan Jangam",
+      "year": 2,
+      "subjects": [
+        "ML",
+        "Java"
+      ],
+      "image_path": "student_images/CS202.png",
+      "major": "Computer Science",
+      "starting_year": 2023
+    },
+    "CS301": {
+      "student_id": "CS301",
+      "name": "Murtaza Hassan",
+      "year": 3,
+      "subjects": [
+        "ML",
+        "Java",
+        "CL"
+      ],
+      "image_path": "student_images/CS301.png",
+      "major": "Computer Science",
+      "starting_year": 2022
+    },
+    "CL201": {
+      "student_id": "CL201",
+      "name": "Reshma Mumma",
+      "year": 2,
+      "subjects": [
+        "CL"
+      ],
+      "image_path": "student_images/CL201.png",
+      "major": "Computational Linguistics",
+      "starting_year": 2023
+    },
+    "CL202": {
+      "student_id": "CL202",
+      "name": "Emily Blunt",
+      "year": 2,
+      "subjects": [
+        "CL",
+        "ML"
+      ],
+      "image_path": "student_images/CL202.png",
+      "major": "Computational Linguistics",
+      "starting_year": 2023
+    },
+    "JV201": {
+      "student_id": "JV201",
+      "name": "Elon Musk",
+      "year": 2,
+      "subjects": [
+        "Java",
+        "ML"
+      ],
+      "image_path": "student_images/JV201.png",
+      "major": "Software Engineering",
+      "starting_year": 2023
+    },
+    "JV202": {
+      "student_id": "JV202",
+      "name": "Leo Jackson",
+      "year": 2,
+      "subjects": [
+        "Java"
+      ],
+      "image_path": "student_images/JV202.png",
+      "major": "Software Engineering",
+      "starting_year": 2023
+    },
+    "CS200": {
+      "student_id": "CS200",
+      "name": "Pa",
+      "year": 2,
+      "subjects": [
+        "Maths",
+        "HTML"
+      ],
+      "image_path": "student_images/CS200.png",
+      "major": "Computer Science",
+      "starting_year": 2025,
+      "total_attendance": 1,
+      "last_attendance_time": "2025-10-22 21:48:04"
+    }
+  }
+}

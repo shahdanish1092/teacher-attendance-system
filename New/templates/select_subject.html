@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block title %}Select Subject - Attendance System{% endblock %}
+
+{% block body_class %}select-subject-page{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hamburger-btn, .sidebar, .overlay {
+        display: none !important;
+    }
+
+    .select-subject-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    .card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        max-width: 800px;
+        width: 100%;
+    }
+
+    .card-header {
+        padding: 32px 32px 24px 32px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .card-header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 20px;
+    }
+
+    .card-title {
+        color: #374151;
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+
+    .card-description {
+        color: #6b7280;
+        font-size: 16px;
+        margin: 0;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 14px;
+    }
+
+    .btn-outline {
+        background: white;
+        color: #667eea;
+        border: 2px solid #667eea;
+    }
+
+    .btn-outline:hover {
+        background: #667eea;
+        color: white;
+        transform: translateY(-2px);
+    }
+
+    .btn-sm {
+        padding: 8px 16px;
+        font-size: 13px;
+    }
+
+    .card-content {
+        padding: 32px;
+    }
+
+    .alert {
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .alert-error {
+        background: #fef2f2;
+        color: #dc2626;
+        border: 1px solid #fecaca;
+    }
+
+    .subject-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+    }
+
+    .subject-card {
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 24px 16px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .subject-card:hover {
+        border-color: #667eea;
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+        background: #f8fafc;
+    }
+
+    .subject-card:active {
+        transform: translateY(-2px);
+    }
+
+    .icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .text-primary {
+        color: #667eea;
+    }
+
+    .subject-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #374151;
+        text-align: center;
+    }
+
+    .icon-sm {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* Animation for cards */
+    .subject-card {
+        animation: fadeInUp 0.6s ease;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .select-subject-container {
+            padding: 16px;
+        }
+
+        .card-header {
+            padding: 24px 24px 16px 24px;
+        }
+
+        .card-content {
+            padding: 24px;
+        }
+
+        .card-header-content {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+        }
+
+        .card-title {
+            font-size: 24px;
+        }
+
+        .subject-grid {
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .subject-card {
+            padding: 20px 12px;
+        }
+
+        .icon {
+            width: 28px;
+            height: 28px;
+        }
+
+        .subject-name {
+            font-size: 14px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .subject-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .subject-card {
+            flex-direction: row;
+            justify-content: flex-start;
+            padding: 16px 20px;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .subject-name {
+            text-align: left;
+        }
+    }
+
+    /* Focus styles for accessibility */
+    .subject-card:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .btn:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="select-subject-container">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-header-content">
+                <div>
+                    <h1 class="card-title">Welcome, {{ teacher_name }}!</h1>
+                    <p class="card-description">Select the subject for today's attendance</p>
+                </div>
+                <a href="{{ url_for('logout') }}" class="btn btn-outline btn-sm">
+                    <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                    Logout
+                </a>
+            </div>
+        </div>
+
+        <div class="card-content">
+            {# Render flashed messages (PRG support) #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, msg in messages %}
+                        <div class="alert {% if category == 'error' %}alert-error{% else %}alert-info{% endif %}">
+                            <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            {{ msg }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% if error %}
+            <div class="alert alert-error">
+                <svg class="icon-sm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                {{ error }}
+            </div>
+            {% endif %}
+
+            <form method="POST" class="subject-grid">
+                <input type="hidden" name="subject" id="subjectInput" value="">
+                {% for subject in subjects %}
+                <button type="submit" name="subject" value="{{ subject }}" class="subject-card">
+                    <svg class="icon text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                    <span class="subject-name">{{ subject }}</span>
+                </button>
+                {% endfor %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Select Subject page loaded successfully');
+        
+        // Add interactive effects to subject cards
+        const subjectCards = document.querySelectorAll('.subject-card');
+        
+        subjectCards.forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-4px)';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = 'translateY(0)';
+            });
+
+            // Add keyboard navigation support
+            card.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    this.click();
+                }
+            });
+        });
+
+        // Add loading state to form submission
+        const form = document.querySelector('form');
+        form.addEventListener('submit', function() {
+            const submitButtons = this.querySelectorAll('button[type="submit"]');
+            submitButtons.forEach(button => {
+                button.disabled = true;
+                button.innerHTML = `
+                    <svg class="icon text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="subject-name">Loading...</span>
+                `;
+            });
+        });
+
+        // Ensure the clicked subject button value is reliably submitted (populate hidden input)
+        const subjectInput = document.getElementById('subjectInput');
+        subjectCards.forEach(card => {
+            card.addEventListener('click', function(e) {
+                try { subjectInput.value = this.getAttribute('value') || this.value || '' } catch(err) {}
+            });
+        });
+    });
+</script>
+{% endblock %}

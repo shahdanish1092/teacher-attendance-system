@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teacher Attendance Control</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+</head>
+<body class="bg-light">
+
+  <div class="container py-4">
+    <div class="card shadow p-4 mx-auto" style="max-width: 480px;">
+      <h3 class="text-center mb-3">🎓 Teacher Attendance Control</h3>
+      <hr>
+      <p class="text-center">
+        Welcome, <strong>{{ teacher_name }}</strong><br>
+        Department: <strong>{{ department }}</strong><br>
+        Subjects: <strong>{{ ', '.join(subjects) }}</strong>
+      </p>
+
+      <hr>
+      <div class="mb-3">
+        <label class="form-label fw-bold">Select Subject:</label>
+        <select id="subject" class="form-select">
+          <option value="">-- Choose Subject --</option>
+          {% for subj in subjects %}
+          <option value="{{ subj }}">{{ subj }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="d-grid mb-2">
+        <button id="startBtn" class="btn btn-primary">➕ Start Attendance</button>
+      </div>
+
+      <div id="alertBox" class="alert d-none text-center" role="alert"></div>
+
+      <div id="sessionInfo" class="text-center mt-3 d-none">
+        <h6 class="fw-bold">Session Link</h6>
+        <input type="text" id="sessionLink" readonly class="form-control text-center mb-2">
+        <div id="qrcode" class="d-flex justify-content-center mt-2"></div>
+        <p class="mt-2 text-muted">
+          ⏳ Session expires at <span id="expiresAt"></span>
+        </p>
+      </div>
+
+      <hr>
+      <div class="text-center">
+        <a href="/register_subnet" class="btn btn-outline-secondary btn-sm">
+          ⚙️ Register / Update Hotspot Subnet
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById("startBtn");
+    const alertBox = document.getElementById("alertBox");
+    const sessionInfo = document.getElementById("sessionInfo");
+    const sessionLink = document.getElementById("sessionLink");
+    const expiresAt = document.getElementById("expiresAt");
+
+    startBtn.addEventListener("click", async () => {
+      const subject = document.getElementById("subject").value.trim();
+
+      if (!subject) {
+        alertBox.className = "alert alert-danger text-center";
+        alertBox.textContent = "❌ Subject is required";
+        alertBox.classList.remove("d-none");
+        return;
+      }
+
+      alertBox.classList.add("d-none");
+
+      try {
+        const res = await fetch("/start_session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subject })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          sessionInfo.classList.remove("d-none");
+          sessionLink.value = data.link;
+          expiresAt.textContent = data.expires_at;
+
+          // Generate QR code
+          const qrDiv = document.getElementById("qrcode");
+          qrDiv.innerHTML = "";
+          new QRCode(qrDiv, {
+            text: data.link,
+            width: 150,
+            height: 150
+          });
+        } else {
+          alertBox.className = "alert alert-danger text-center";
+          alertBox.textContent = "⚠️ " + data.message;
+          alertBox.classList.remove("d-none");
+        }
+      } catch (err) {
+        alertBox.className = "alert alert-danger text-center";
+        alertBox.textContent = "⚠️ Failed to start session.";
+        alertBox.classList.remove("d-none");
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!-- templates/student_attendance.html -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Mark Attendance</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; padding: 16px; max-width: 640px; margin:auto; }
+    video { width: 100%; border-radius: 8px; background:#000; }
+    .btn { display:inline-block; padding:12px 18px; margin-top:12px; border-radius:6px; cursor:pointer; background:#2b7; color:#fff; }
+    .info { margin-top:12px; }
+  </style>
+</head>
+<body>
+  <h2>Mark Attendance — {{ lecture }}</h2>
+  <video id="video" playsinline autoplay></video>
+  <div>
+    <button id="captureBtn" class="btn">Capture & Mark Attendance</button>
+  </div>
+  <p id="status" class="info">Status: Waiting</p>
+
+<script>
+const sessionId = "{{ session_id }}";
+const startVideo = async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+    document.getElementById('video').srcObject = stream;
+  } catch (e) {
+    document.getElementById('status').innerText = 'Camera access denied or not available';
+  }
+};
+
+function dataURLtoBlob(dataurl) {
+  var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+      bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+  while(n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], {type:mime});
+}
+
+document.getElementById('captureBtn').addEventListener('click', async () => {
+  const video = document.getElementById('video');
+  if (!video.videoWidth) {
+    document.getElementById('status').innerText = 'Video not ready';
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const dataURL = canvas.toDataURL('image/jpeg', 0.8);
+
+  document.getElementById('status').innerText = 'Uploading for verification...';
+
+  try {
+    const res = await fetch('/verify_face', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ session_id: sessionId, image: dataURL })
+    });
+    const j = await res.json();
+    if (j.success) {
+      document.getElementById('status').innerText = `Success: ${j.message} (${j.student_id || ''})`;
+    } else {
+      document.getElementById('status').innerText = `Failed: ${j.message}`;
+    }
+  } catch (e) {
+    document.getElementById('status').innerText = 'Upload failed';
+  }
+});
+
+startVideo();
+</script>
+</body>
+</html>

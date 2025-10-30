@@ -1,0 +1,34 @@
+{
+  "IT_dept": {
+    "IT-01": {
+      "name": "Praisein",
+      "username": "p.n",
+      "subjects": [
+        "ML",
+        "Maths",
+        "HTML"
+      ],
+      "password": "Praisein2005"
+    },
+    "IT-02": {
+      "name": "Danish",
+      "username": "dan.ish",
+      "subjects": [
+        "ML",
+        "CL",
+        "Java"
+      ],
+      "password": "Danish2005"
+    },
+    "IT-03": {
+      "name": "John Smith",
+      "username": "john.smith",
+      "subjects": [
+        "J2EE",
+        "Python",
+        "C++"
+      ],
+      "password": "password"
+    }
+  }
+}

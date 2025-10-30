@@ -1,0 +1,12 @@
+{
+  "p.n": {
+    "name": "p.n_hotspot",
+    "subnet": "192.168.226.",
+    "registered_on": "2025-10-30 20:47:51"
+  },
+  "default_teacher": {
+    "name": "default_teacher_hotspot",
+    "subnet": "192.168.226.",
+    "registered_on": "2025-10-30 19:19:26"
+  }
+}
