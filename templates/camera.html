@@ -51,28 +51,33 @@
         alert("Camera access denied. Please enable it.");
       });
 
+    const urlParams = new URLSearchParams(window.location.search);
+    const session_id = urlParams.get("session_id");
+    const token = urlParams.get("token");
+
     captureBtn.onclick = async () => {
-      // Create a hidden canvas to capture the frame
       const canvas = document.createElement("canvas");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       const ctx = canvas.getContext("2d");
       ctx.drawImage(video, 0, 0);
-
       const imageData = canvas.toDataURL("image/jpeg");
 
       statusEl.innerText = "Uploading...";
 
-      // Send image to Flask backend
+      const body = { image: imageData };
+      if (session_id) body.session_id = session_id;
+      if (token) body.token = token;
+
       const res = await fetch("/upload_face", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: imageData })
+        body: JSON.stringify(body)
       });
 
-      const data = await res.json();
-      statusEl.innerText = data.message || data.status;
-    };
+    const data = await res.json();
+    statusEl.innerText = data.message || data.status;
+  };
   </script>
 </body>
 </html>

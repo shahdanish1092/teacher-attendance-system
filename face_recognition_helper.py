@@ -1,21 +1,43 @@
+# face_recognition_helper.py
 import cv2
 import numpy as np
 from ultralytics import YOLO
+import os
 
-# Load your trained YOLO model (adjust path if needed)
-model = YOLO("l_version_1_214.pt")  # replace with your model filename
+model = None
+MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "l_version_1_214.pt")
+
+try:
+    if os.path.isfile(MODEL_PATH):
+        model = YOLO(MODEL_PATH)
+        print("✅ YOLO model loaded:", MODEL_PATH)
+    else:
+        print("⚠️ YOLO model not found at", MODEL_PATH)
+except Exception as e:
+    model = None
+    print("⚠️ Failed to load YOLO model:", e)
+
 
 def recognize_face_from_frame(frame):
     """
-    Takes an image frame (numpy array), detects and recognizes a face,
-    and returns the recognized student's name or None.
+    Returns recognized student's name or identifier (string) or None.
+    This function depends on your trained model and how you map model outputs to student IDs.
     """
+    if model is None:
+        raise RuntimeError("YOLO model not loaded")
+
+    # Run model (assumes model returns boxes and class/label mapping)
     results = model(frame, verbose=False)
-    for result in results:
-        boxes = result.boxes
-        if len(boxes) > 0:
-            # You can add custom logic here to identify student by face embedding
-            # For now, we just return a placeholder name
-            # Example: use student_id = boxes.cls[0].item()
-            return "Recognized_Student"
+    # Customize the interpretation according to how you trained the model
+    for r in results:
+        boxes = getattr(r, "boxes", None)
+        if boxes and len(boxes) > 0:
+            # This placeholder returns the first detected class name if available
+            # Replace with your actual mapping (e.g., boxes.cls or r.names[index])
+            try:
+                cls_idx = int(boxes.cls[0].item())
+                name = r.names.get(cls_idx, f"class_{cls_idx}")
+                return name
+            except Exception:
+                return "Detected"
     return None
