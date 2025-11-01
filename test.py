@@ -1,11 +1,7 @@
 from supabase_config import supabase
 
-# Replace this with a valid student_id from your Supabase students table
-student_id = "CS203"
+print("✅ Connected successfully to Supabase!")
 
-try:
-    result = supabase.rpc("increment_attendance", {"student_id_input": student_id}).execute()
-    print("✅ RPC executed successfully!")
-    print("Response:", result)
-except Exception as e:
-    print("❌ Error running RPC:", e)
+# Optional: Try fetching data from your teachers table
+response = supabase.table("teachers").select("*").limit(2).execute()
+print(response.data)

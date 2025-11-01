@@ -1,4 +1,4 @@
-# app.py
+import face_recognition
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from supabase_config import supabase
 from datetime import datetime, timedelta
@@ -6,13 +6,30 @@ from face_recognition_helper import recognize_face_from_frame
 
 import uuid
 import os
-import subprocess
 import base64
 import cv2
 import numpy as np
 
 app = Flask(__name__)
 app.secret_key = os.getenv("APP_SECRET_KEY", "default_secret")
+
+STUDENT_IMAGES_PATH = "static/student_images"
+
+# ====== Load known student faces ======
+known_faces = []
+student_ids = []
+
+for filename in os.listdir(STUDENT_IMAGES_PATH):
+    if filename.endswith(".png") or filename.endswith(".jpg"):
+        path = os.path.join(STUDENT_IMAGES_PATH, filename)
+        img = cv2.imread(path)
+        enc = face_recognition.face_encodings(img)
+        if enc:
+            known_faces.append(enc[0])
+            student_ids.append(os.path.splitext(filename)[0])
+
+print(f"✅ Loaded {len(student_ids)} student faces.")
+
 
 # --- Helper Functions ---
 
@@ -22,6 +39,7 @@ def validate_teacher(username, password):
     if result.data:
         return result.data[0]
     return None
+
 
 def create_session(teacher_username, subject):
     """Create active session"""
@@ -38,36 +56,51 @@ def create_session(teacher_username, subject):
     }).execute()
     return session_id, token
 
+
 def get_active_sessions():
     res = supabase.table("sessions").select("*").execute()
     return res.data
 
+
 # --- ROUTES ---
 
-@app.route("/")
+@app.route('/')
 def home():
-    if "teacher" in session:
-        return render_template("home.html", teacher=session["teacher"])
-    return redirect(url_for("login"))
+    return render_template("mark_attendance.html")
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    """Render login form or process login"""
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
-        teacher = validate_teacher(username, password)
 
-        if teacher:
+        response = supabase.table("teachers").select("*").eq("username", username).execute()
+        if response.data and response.data[0]["password"] == password:
+            teacher = response.data[0]
+            session["teacher_name"] = teacher["name"]
             session["teacher"] = teacher
-            return redirect(url_for("home"))
+            return redirect(url_for("dashboard"))
         else:
-            return render_template("login.html", error="Invalid username or password")
-    return render_template("login.html")
+            return "❌ Invalid username or password"
+
+    # For GET requests (browser visits)
+    return "<h2>👩‍🏫 Teacher Login</h2><form method='POST'><input name='username' placeholder='Username'><br><input name='password' type='password' placeholder='Password'><br><button>Login</button></form>"
+
+
+@app.route("/dashboard")
+def dashboard():
+    if "teacher_name" not in session:
+        return redirect(url_for("home"))
+    return f"👋 Welcome {session['teacher_name']}! Your attendance dashboard is ready."
+
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
 
 @app.route("/start_session", methods=["POST"])
 def start_session():
@@ -88,9 +121,6 @@ def start_session():
     return render_template("mark_attendance.html", subject=subject, session_id=session_id, teacher=teacher)
 
 
-
-
-
 @app.route("/stop_session", methods=["POST"])
 def stop_session():
     if "current_session" in session:
@@ -99,12 +129,13 @@ def stop_session():
         del session["current_session"]
     return redirect(url_for("home"))
 
+
 @app.route("/get_students", methods=["GET"])
 def get_students():
     res = supabase.table("students").select("*").execute()
     return jsonify(res.data)
 
-# For face attendance system trigger
+
 @app.route("/start_recognition")
 def start_recognition():
     """Render the camera page for students."""
@@ -122,38 +153,59 @@ def stop_recognition():
         return jsonify({"status": "error", "message": str(e)})
 
 
-@app.route("/upload_face", methods=["POST"])
+@app.route('/upload_face', methods=['POST'])
 def upload_face():
     try:
         data = request.get_json()
-        if not data or "image" not in data:
-            return jsonify({"status": "error", "message": "No image received"})
+        image_data = data.get("image")
+
+        if not image_data:
+            return jsonify({"message": "No image received"}), 400
 
         # Decode base64 image
-        img_data = data["image"].split(",")[1]
-        img_bytes = base64.b64decode(img_data)
-        np_img = np.frombuffer(img_bytes, np.uint8)
-        frame = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+        image_data = image_data.split(",")[1]
+        img_bytes = base64.b64decode(image_data)
+        np_arr = np.frombuffer(img_bytes, np.uint8)
+        frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        # --- Run YOLO face recognition ---
-        recognized_name = recognize_face_from_frame(frame)
+        # Convert and resize
+        small = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+        rgb_small = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
 
-        if recognized_name:
-            # Mark attendance in Supabase
-            supabase.table("attendance").insert({
-                "name": recognized_name,
-                "timestamp": datetime.utcnow().isoformat()
-            }).execute()
+        faces = face_recognition.face_locations(rgb_small)
+        encs = face_recognition.face_encodings(rgb_small, faces)
 
-            return jsonify({"status": "success", "message": f"Attendance marked for {recognized_name}!"})
-        else:
-            return jsonify({"status": "error", "message": "No face recognized."})
+        for enc, loc in zip(encs, faces):
+            matches = face_recognition.compare_faces(known_faces, enc)
+            face_dist = face_recognition.face_distance(known_faces, enc)
+            best_match = np.argmin(face_dist)
+
+            if matches[best_match]:
+                student_id = student_ids[best_match]
+                res = supabase.table("students").select("*").eq("student_id", student_id).execute()
+
+                if res.data:
+                    student = res.data[0]
+                    total_attendance = int(student.get("total_attendance", 0)) + 1
+
+                    supabase.table("students").update({
+                        "total_attendance": total_attendance,
+                        "last_attendance_time": datetime.now().isoformat()
+                    }).eq("student_id", student_id).execute()
+
+                    print(f"✅ Attendance marked for {student['name']} ({student_id})")
+
+                    return jsonify({
+                        "message": f"Attendance marked for {student['name']}"
+                    })
+
+        return jsonify({"message": "No recognized face found"}), 404
 
     except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+        print("❌ Error:", e)
+        return jsonify({"message": f"Error: {e}"}), 500
 
 
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000, debug=False)
 
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)

@@ -1,9 +1,12 @@
-import os
 from supabase import create_client, Client
+from dotenv import load_dotenv
+import os
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+load_dotenv()
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+url = os.getenv("SUPABASE_URL")
+key = os.getenv("SUPABASE_KEY")
 
-print("✅ Connected to Supabase")
+supabase: Client = create_client(url, key)
+
+print("✅ Connected successfully to Supabase!")
