@@ -1,0 +1,4 @@
+id,name,username,password,subjects
+IT-01,Praisein,p.n,Praisein2005,"[""ML"", ""Maths"", ""HTML""]"
+IT-02,Danish,dan.ish,Danish2005,"[""ML"", ""CL"", ""Java""]"
+IT-03,John Smith,john.smith,password,"[""J2EE"", ""Python"", ""C++""]"

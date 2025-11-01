@@ -1,0 +1,10 @@
+student_id,name,year,subjects,image_path,major,starting_year,total_attendance,last_attendance_time
+CS203,Praisein Nadar,2,"[""ML"", ""HTML""]",student_images/CS203.png,Computer Science,2025,3,2025-10-26 16:22:44
+CS201,Shah Danish,2,"[""ML"", ""Java"", ""CL""]",student_images/CS201.png,Computer Science,2023,0,
+CS202,Karan Jangam,2,"[""ML"", ""Java""]",student_images/CS202.png,Computer Science,2023,0,
+CS301,Murtaza Hassan,3,"[""ML"", ""Java"", ""CL""]",student_images/CS301.png,Computer Science,2022,0,
+CL201,Reshma Mumma,2,"[""CL""]",student_images/CL201.png,Computational Linguistics,2023,0,
+CL202,Emily Blunt,2,"[""CL"", ""ML""]",student_images/CL202.png,Computational Linguistics,2023,0,
+JV201,Elon Musk,2,"[""Java"", ""ML""]",student_images/JV201.png,Software Engineering,2023,0,
+JV202,Leo Jackson,2,"[""Java""]",student_images/JV202.png,Software Engineering,2023,0,
+CS200,Pa,2,"[""Maths"", ""HTML""]",student_images/CS200.png,Computer Science,2025,1,2025-10-22 21:48:04

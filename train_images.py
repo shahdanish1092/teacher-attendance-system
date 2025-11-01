@@ -1,60 +1,49 @@
-import cv2
-import face_recognition
-import pickle
+# train_images.py
+"""
+Processes images in static/student_images and (optionally) uploads them to Firebase Storage.
+When using Firebase for online deployments, run this locally once to push student images.
+"""
+
 import os
+import argparse
 
-# Folder containing student images (inside static/)
-folderPath = os.path.join('static', 'student_images')
-imgList = []
-studentIds = []
-imageData = []  # To store (id, path) pairs
+parser = argparse.ArgumentParser()
+parser.add_argument("--upload", action="store_true", help="Upload student images to Firebase Storage (requires USE_FIREBASE)")
+args = parser.parse_args()
 
-# Process each image in the folder
-for filename in os.listdir(folderPath):
-    if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-        img_path = os.path.join(folderPath, filename)
-        img = cv2.imread(img_path)
+STUDENT_IMAGES_DIR = os.path.join("static", "student_images")
 
-        if img is None:
-            print(f"⚠️ Skipping {filename} — unable to read image.")
+if args.upload:
+    # Lazy import firebase admin
+    import firebase_admin
+    from firebase_admin import credentials, storage
+    cred_path = os.environ.get("FIREBASE_CREDENTIALS_PATH")
+    bucket_name = os.environ.get("FIREBASE_STORAGE_BUCKET")
+    if not cred_path or not bucket_name:
+        raise RuntimeError("Set FIREBASE_CREDENTIALS_PATH and FIREBASE_STORAGE_BUCKET to upload images.")
+    cred = credentials.Certificate(cred_path)
+    firebase_admin.initialize_app(cred, {"storageBucket": bucket_name})
+    bucket = storage.bucket()
+
+    uploaded = 0
+    for fname in os.listdir(STUDENT_IMAGES_DIR):
+        if not fname.lower().endswith((".jpg", ".png", ".jpeg")):
             continue
-
-        # Student ID will be the filename (without extension)
-        student_id = os.path.splitext(filename)[0]
-        print(f"🔹 Processing image for Student ID: {student_id}")
-
-        imgList.append(img)
-        studentIds.append(student_id)
-        imageData.append((student_id, img_path))
-
-# We no longer use a database for image paths - file system is the source of truth
-
-# Generate face encodings
-def findEncodings(images, ids):
-    encodeList = []
-    validIds = []
-
-    for img, sid in zip(images, ids):
-        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        encodings = face_recognition.face_encodings(rgb_img)
-
-        if len(encodings) > 0:
-            encodeList.append(encodings[0])
-            validIds.append(sid)
-            print(f"✅ Face encoded for: {sid}")
-        else:
-            print(f"⚠️ No face detected for ID: {sid}")
-
-    return encodeList, validIds
-
-
-print("\n🚀 Encoding started...")
-encodeListKnown, validIds = findEncodings(imgList, studentIds)
-encodeListKnownWithIds = [encodeListKnown, validIds]
-
-# Save encodings to a pickle file for later recognition
-with open("EncodeFile.p", "wb") as f:
-    pickle.dump(encodeListKnownWithIds, f)
-
-print(f"\n✅ Encoding complete! Total encoded faces: {len(validIds)}")
-print("🧠 Data saved successfully to EncodeFile.p")
+        local_path = os.path.join(STUDENT_IMAGES_DIR, fname)
+        blob = bucket.blob(f"student_images/{fname}")
+        blob.upload_from_filename(local_path)
+        uploaded += 1
+    print(f"✅ Uploaded {uploaded} images to Firebase Storage in folder student_images/")
+else:
+    # Basic local check: list images and validate they can be read
+    import cv2
+    count = 0
+    for fname in os.listdir(STUDENT_IMAGES_DIR):
+        if fname.lower().endswith((".jpg", ".png", ".jpeg")):
+            path = os.path.join(STUDENT_IMAGES_DIR, fname)
+            img = cv2.imread(path)
+            if img is None:
+                print("⚠️ Could not read:", fname)
+            else:
+                count += 1
+    print(f"Found {count} readable student images in {STUDENT_IMAGES_DIR}")

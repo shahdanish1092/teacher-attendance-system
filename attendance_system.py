@@ -1,156 +1,69 @@
 # attendance_system.py
 import cv2
 import face_recognition
-import pickle
 import numpy as np
 import os
 from datetime import datetime
-import csv
-from collections import defaultdict
+from supabase_config import supabase
 
-# ============================================================
-# 🔹 Configuration
-# ============================================================
-ENCODING_FILE = "EncodeFile.p"  # Pre-trained encodings
-known_encodings = []
+STUDENT_IMAGES_PATH = "static/student_images"
+
+# Load known faces
+known_faces = []
 student_ids = []
-STUDENT_IMAGES_DIR = "static/student_images"  # Directory containing student folders
-ATTENDANCE_LOG = "attendance_log.csv"         # CSV for attendance
-TOLERANCE = 0.5                               # Face match tolerance
 
+for filename in os.listdir(STUDENT_IMAGES_PATH):
+    if filename.endswith(".png") or filename.endswith(".jpg"):
+        img = cv2.imread(os.path.join(STUDENT_IMAGES_PATH, filename))
+        enc = face_recognition.face_encodings(img)
+        if enc:
+            known_faces.append(enc[0])
+            student_ids.append(os.path.splitext(filename)[0])
 
-# ============================================================
-# 🔹 Load Encoded Data
-# ============================================================
-def load_encodings():
-    """
-    Loads face encodings and student IDs from EncodeFile.p
-    Called once when Flask starts.
-    """
-    global known_encodings, student_ids
-    if not os.path.exists(ENCODING_FILE):
-        print(f"⚠️ EncodeFile.p not found: {ENCODING_FILE}")
-        return
+print(f"✅ Loaded {len(student_ids)} student faces")
 
-    print("⏳ Loading face encodings...")
-    with open(ENCODING_FILE, "rb") as f:
-        known_encodings, student_ids = pickle.load(f)
-    print(f"✅ Loaded encodings for {len(student_ids)} students.")
+# Webcam
+cap = cv2.VideoCapture(0)
+while True:
+    success, frame = cap.read()
+    if not success:
+        break
 
+    small = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+    rgb_small = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
 
-# ============================================================
-# 🔹 Attendance Logging
-# ============================================================
-def mark_attendance(student_id, subject=None):
-    """
-    Record attendance in a CSV with timestamp and optional subject.
-    """
-    now = datetime.now()
-    date_str = now.strftime("%Y-%m-%d")
-    time_str = now.strftime("%H:%M:%S")
+    faces = face_recognition.face_locations(rgb_small)
+    encs = face_recognition.face_encodings(rgb_small, faces)
 
-    # Create CSV if not exists
-    if not os.path.exists(ATTENDANCE_LOG):
-        with open(ATTENDANCE_LOG, "w") as f:
-            f.write("StudentID,Date,Time,Subject\n")
+    for enc, loc in zip(encs, faces):
+        matches = face_recognition.compare_faces(known_faces, enc)
+        face_dist = face_recognition.face_distance(known_faces, enc)
+        best_match = np.argmin(face_dist)
 
-    # Avoid duplicate entries
-    with open(ATTENDANCE_LOG, "r+") as f:
-        lines = f.readlines()
-        if not any(student_id in line and date_str in line and (subject or "") in line for line in lines):
-            f.write(f"{student_id},{date_str},{time_str},{subject or '-'}\n")
-            print(f"🕒 Attendance marked: {student_id} ({subject or 'N/A'}) at {time_str}")
-            return True
+        if matches[best_match]:
+            student_id = student_ids[best_match]
 
-    print(f"⚠️ Duplicate attendance ignored for {student_id} ({subject or 'N/A'})")
-    return False
+            # Fetch student from Supabase
+            res = supabase.table("students").select("*").eq("student_id", student_id).execute()
+            if res.data:
+                student = res.data[0]
+                total_attendance = int(student.get("total_attendance", 0)) + 1
 
+                supabase.table("students").update({
+                    "total_attendance": total_attendance,
+                    "last_attendance_time": datetime.now().isoformat()
+                }).eq("student_id", student_id).execute()
 
-# ============================================================
-# 🔹 Face Recognition
-# ============================================================
-def recognize_face(image, subject=None):
-    """
-    Takes a BGR image from OpenCV and returns recognized student ID or None.
-    Logs attendance automatically.
-    """
-    if not known_encodings:
-        load_encodings()
+                print(f"✅ Marked attendance for {student['name']} ({student_id})")
 
-    try:
-        rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        face_locations = face_recognition.face_locations(rgb_image)
-        face_encodings = face_recognition.face_encodings(rgb_image, face_locations)
+                y1, x2, y2, x1 = [v * 4 for v in loc]
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(frame, student["name"], (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-        if not face_encodings:
-            print("⚠️ No face detected.")
-            return None
+    cv2.imshow("Attendance System", frame)
 
-        for encodeFace in face_encodings:
-            matches = face_recognition.compare_faces(known_encodings, encodeFace, tolerance=TOLERANCE)
-            face_distances = face_recognition.face_distance(known_encodings, encodeFace)
+    if cv2.waitKey(1) & 0xFF == ord("q"):
+        break
 
-            if True in matches:
-                match_index = np.argmin(face_distances)
-                student_id = student_ids[match_index]
-                print(f"✅ Recognized student: {student_id}")
-
-                mark_attendance(student_id, subject)
-                return student_id
-
-        print("❌ No known match found.")
-        return None
-
-    except Exception as e:
-        print(f"[Error in recognize_face]: {e}")
-        return None
-
-
-# ============================================================
-# 🔹 Attendance Summary
-# ============================================================
-def get_attendance_summary(student_id=None):
-    """
-    Reads attendance_log.csv and returns summary dict.
-    If student_id provided → returns only that student's data.
-    Example structure:
-    {
-        "BSCIT30": {
-            "ML": {"attended": 3, "total_classes": 4, "percentage": 75.0}
-        }
-    }
-    """
-    summary = defaultdict(lambda: defaultdict(lambda: {"attended": 0, "total_classes": 0, "percentage": 0.0}))
-
-    if not os.path.exists(ATTENDANCE_LOG):
-        print("⚠️ No attendance log found.")
-        return {}
-
-    with open(ATTENDANCE_LOG, "r") as f:
-        reader = csv.DictReader(f)
-        records = list(reader)
-
-    for row in records:
-        sid = row["StudentID"]
-        subject = row.get("Subject", "-") or "-"
-        summary[sid][subject]["attended"] += 1
-
-    # Determine total classes = highest attendance count per subject
-    totals = defaultdict(int)
-    for sid, subj_data in summary.items():
-        for subject, data in subj_data.items():
-            totals[subject] = max(totals[subject], data["attended"])
-
-    # Compute percentages
-    for sid, subj_data in summary.items():
-        for subject, data in subj_data.items():
-            total_classes = totals[subject]
-            attended = data["attended"]
-            percentage = (attended / total_classes * 100) if total_classes else 0
-            summary[sid][subject]["total_classes"] = total_classes
-            summary[sid][subject]["percentage"] = round(percentage, 2)
-
-    if student_id:
-        return summary.get(student_id, {})
-
-    return summary
+cap.release()
+cv2.destroyAllWindows()
