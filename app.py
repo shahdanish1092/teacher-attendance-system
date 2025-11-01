@@ -2,9 +2,14 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from supabase_config import supabase
 from datetime import datetime, timedelta
+from face_recognition_helper import recognize_face_from_frame
+
 import uuid
 import os
 import subprocess
+import base64
+import cv2
+import numpy as np
 
 app = Flask(__name__)
 app.secret_key = os.getenv("APP_SECRET_KEY", "default_secret")
@@ -82,6 +87,10 @@ def start_session():
 
     return render_template("mark_attendance.html", subject=subject, session_id=session_id, teacher=teacher)
 
+
+
+
+
 @app.route("/stop_session", methods=["POST"])
 def stop_session():
     if "current_session" in session:
@@ -96,18 +105,55 @@ def get_students():
     return jsonify(res.data)
 
 # For face attendance system trigger
-@app.route("/start_recognition", methods=["POST"])
+@app.route("/start_recognition")
 def start_recognition():
-    try:
-        subprocess.Popen(["python", "attendance_system.py"])
-        return jsonify({"status": "started"})
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)})
+    """Render the camera page for students."""
+    if "teacher" not in session:
+        return redirect(url_for("login"))
+    return render_template("camera.html")  # page for students to open camera
+
 
 @app.route("/stop_recognition", methods=["POST"])
 def stop_recognition():
-    os.system("taskkill /f /im python.exe")  # stop webcam process (Windows)
-    return jsonify({"status": "stopped"})
+    try:
+        os.system("pkill -f attendance_system.py")
+        return jsonify({"status": "stopped"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
+@app.route("/upload_face", methods=["POST"])
+def upload_face():
+    try:
+        data = request.get_json()
+        if not data or "image" not in data:
+            return jsonify({"status": "error", "message": "No image received"})
+
+        # Decode base64 image
+        img_data = data["image"].split(",")[1]
+        img_bytes = base64.b64decode(img_data)
+        np_img = np.frombuffer(img_bytes, np.uint8)
+        frame = cv2.imdecode(np_img, cv2.IMREAD_COLOR)
+
+        # --- Run YOLO face recognition ---
+        recognized_name = recognize_face_from_frame(frame)
+
+        if recognized_name:
+            # Mark attendance in Supabase
+            supabase.table("attendance").insert({
+                "name": recognized_name,
+                "timestamp": datetime.utcnow().isoformat()
+            }).execute()
+
+            return jsonify({"status": "success", "message": f"Attendance marked for {recognized_name}!"})
+        else:
+            return jsonify({"status": "error", "message": "No face recognized."})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
+
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

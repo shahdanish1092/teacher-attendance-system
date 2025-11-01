@@ -1,124 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mark Attendance</title>
-  <link
-    rel="stylesheet"
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-  />
   <style>
-    body {
-      background-color: #f7f7f7;
-    }
-    video {
-      width: 100%;
-      border-radius: 10px;
-    }
-    #captureBtn {
-      margin-top: 10px;
-    }
-    .result-box {
-      display: none;
-      margin-top: 15px;
-    }
+    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+    video { width: 90%; max-width: 400px; border-radius: 10px; margin: 10px 0; }
+    button { padding: 10px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; }
   </style>
 </head>
 <body>
-  <div class="container py-4">
-    <div class="card shadow p-4 mx-auto" style="max-width: 480px;">
-      <h3 class="text-center mb-3">🎯 Mark Your Attendance</h3>
-      <div class="text-center mb-3">
-        <video id="video" autoplay playsinline></video>
-      </div>
+  <h2>📸 Mark Your Attendance</h2>
 
-      <div class="d-grid mb-2">
-        <button id="captureBtn" class="btn btn-success">
-          📸 Capture & Verify
-        </button>
-      </div>
-
-      <div id="statusBox" class="alert text-center d-none"></div>
-
-      <div id="resultBox" class="result-box alert alert-info text-center">
-        <h5>✅ Attendance Marked</h5>
-        <p><strong>Name:</strong> <span id="studentName"></span></p>
-        <p><strong>Time:</strong> <span id="attendanceTime"></span></p>
-      </div>
-
-      <div class="text-center mt-3">
-        <small class="text-muted">Keep your face clearly visible in good lighting.</small>
-      </div>
-    </div>
-  </div>
-
-  <canvas id="canvas" style="display:none;"></canvas>
+  <video id="camera" autoplay playsinline></video>
+  <br>
+  <button id="capture">Capture & Send</button>
 
   <script>
-    const video = document.getElementById("video");
-    const captureBtn = document.getElementById("captureBtn");
-    const statusBox = document.getElementById("statusBox");
-    const resultBox = document.getElementById("resultBox");
-    const studentName = document.getElementById("studentName");
-    const attendanceTime = document.getElementById("attendanceTime");
+    const video = document.getElementById('camera');
+    const captureBtn = document.getElementById('capture');
 
-    const sessionId = window.location.pathname.split("/").pop();
+    // Ask for camera permission
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => alert('Camera access denied: ' + err));
 
-    // Request camera access
-    async function startCamera() {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
-      } catch (err) {
-        alert("Camera access denied! Please allow camera permission.");
-        console.error(err);
-      }
-    }
-
-    startCamera();
-
-    captureBtn.addEventListener("click", async () => {
-      statusBox.classList.remove("d-none", "alert-danger", "alert-success");
-      statusBox.classList.add("alert-warning");
-      statusBox.textContent = "⏳ Verifying your face...";
-
-      const canvas = document.getElementById("canvas");
-      const context = canvas.getContext("2d");
+    captureBtn.onclick = async () => {
+      const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      const imageData = canvas.toDataURL('image/png');
 
-      const imageData = canvas.toDataURL("image/jpeg");
+      const res = await fetch('/upload_face', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageData })
+      });
 
-      try {
-        const res = await fetch(`/verify_face/${sessionId}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: imageData }),
-        });
-
-        const data = await res.json();
-        if (data.success) {
-          statusBox.classList.add("alert-success");
-          statusBox.classList.remove("alert-warning");
-          statusBox.textContent = "✅ Face recognized successfully!";
-
-          resultBox.style.display = "block";
-          studentName.textContent = data.name;
-          attendanceTime.textContent = data.time;
-        } else {
-          statusBox.classList.add("alert-danger");
-          statusBox.classList.remove("alert-warning");
-          statusBox.textContent = "❌ " + data.message;
-        }
-      } catch (err) {
-        console.error(err);
-        statusBox.classList.add("alert-danger");
-        statusBox.classList.remove("alert-warning");
-        statusBox.textContent = "⚠️ Error connecting to server.";
-      }
-    });
+      const result = await res.json();
+      alert(result.message);
+    };
   </script>
 </body>
 </html>
