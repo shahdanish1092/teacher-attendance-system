@@ -1,47 +1,18 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mark Attendance</title>
-  <style>
-    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-    video { width: 90%; max-width: 400px; border-radius: 10px; margin: 10px 0; }
-    button { padding: 10px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; }
-  </style>
-</head>
+<!-- templates/mark_attendance.html -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Mark Attendance</title></head>
 <body>
-  <h2>📸 Mark Your Attendance</h2>
-
-  <video id="camera" autoplay playsinline></video>
-  <br>
-  <button id="capture">Capture & Send</button>
+  <h3>Mark Attendance — Subject: {{ subject }}</h3>
+  <video id="video" width="640" height="480" autoplay muted playsinline></video>
+  <div id="status">Camera ready.</div>
+  <button id="captureBtn">Capture & Verify</button>
 
   <script>
-    const video = document.getElementById('camera');
-    const captureBtn = document.getElementById('capture');
-
-    // Ask for camera permission
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => alert('Camera access denied: ' + err));
-
-    captureBtn.onclick = async () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      canvas.getContext('2d').drawImage(video, 0, 0);
-      const imageData = canvas.toDataURL('image/png');
-
-      const res = await fetch('/upload_face', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageData })
-      });
-
-      const result = await res.json();
-      alert(result.message);
-    };
+    const sessionId = "{{ session_id }}";
+    const token = "{{ token }}";
   </script>
+  <script src="/static/js/camera.js"></script>
+  <script>startCameraAndAttach(sessionId, token);</script>
 </body>
 </html>

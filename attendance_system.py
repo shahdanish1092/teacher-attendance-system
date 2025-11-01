@@ -1,69 +1,117 @@
 # attendance_system.py
+import os
 import cv2
 import face_recognition
 import numpy as np
-import os
 from datetime import datetime
 from supabase_config import supabase
 
-STUDENT_IMAGES_PATH = "static/student_images"
+# Path where student reference images are stored (commit these to repo)
+STUDENT_IMAGES_DIR = os.path.join("static", "student_images")
 
-# Load known faces
-known_faces = []
-student_ids = []
+# In-memory lists of known encodings and corresponding student ids
+_known_encodings = []
+_known_ids = []
+_initialized = False
 
-for filename in os.listdir(STUDENT_IMAGES_PATH):
-    if filename.endswith(".png") or filename.endswith(".jpg"):
-        img = cv2.imread(os.path.join(STUDENT_IMAGES_PATH, filename))
-        enc = face_recognition.face_encodings(img)
-        if enc:
-            known_faces.append(enc[0])
-            student_ids.append(os.path.splitext(filename)[0])
+def initialize():
+    """
+    Load all images from STUDENT_IMAGES_DIR and compute face encodings.
+    Call this once at app startup.
+    """
+    global _initialized, _known_encodings, _known_ids
+    if _initialized:
+        return
 
-print(f"✅ Loaded {len(student_ids)} student faces")
+    _known_encodings = []
+    _known_ids = []
+    if not os.path.isdir(STUDENT_IMAGES_DIR):
+        print(f"⚠️ Student images directory not found: {STUDENT_IMAGES_DIR}")
+        _initialized = True
+        return
 
-# Webcam
-cap = cv2.VideoCapture(0)
-while True:
-    success, frame = cap.read()
-    if not success:
-        break
+    files = sorted(os.listdir(STUDENT_IMAGES_DIR))
+    print(f"Loading student images from {STUDENT_IMAGES_DIR} ({len(files)} files)...")
+    for fname in files:
+        if not fname.lower().endswith((".png", ".jpg", ".jpeg")):
+            continue
+        sid = os.path.splitext(fname)[0]
+        path = os.path.join(STUDENT_IMAGES_DIR, fname)
+        try:
+            img = face_recognition.load_image_file(path)
+            encs = face_recognition.face_encodings(img)
+            if encs:
+                _known_encodings.append(encs[0])
+                _known_ids.append(sid)
+                print(f"  - Loaded {sid}")
+            else:
+                print(f"  - No face found in {fname}, skipping")
+        except Exception as e:
+            print(f"  - Error loading {fname}: {e}")
 
-    small = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-    rgb_small = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
+    print(f"✅ Loaded {_known_ids.__len__()} student encodings")
+    _initialized = True
 
-    faces = face_recognition.face_locations(rgb_small)
-    encs = face_recognition.face_encodings(rgb_small, faces)
+def _numpy_bgr_from_bytes(img_bytes):
+    # decode bytes (jpeg/png) to BGR numpy array
+    nparr = np.frombuffer(img_bytes, np.uint8)
+    bgr = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    return bgr
 
-    for enc, loc in zip(encs, faces):
-        matches = face_recognition.compare_faces(known_faces, enc)
-        face_dist = face_recognition.face_distance(known_faces, enc)
-        best_match = np.argmin(face_dist)
+def recognize_face_from_bytes(img_bytes, tolerance=0.5):
+    """
+    Accepts image bytes (as received from browser), returns matched student_id or None.
+    """
+    if not _initialized:
+        initialize()
 
-        if matches[best_match]:
-            student_id = student_ids[best_match]
+    try:
+        bgr = _numpy_bgr_from_bytes(img_bytes)
+        # convert to RGB for face_recognition
+        rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
+        face_locs = face_recognition.face_locations(rgb)
+        encodings = face_recognition.face_encodings(rgb, face_locs)
 
-            # Fetch student from Supabase
-            res = supabase.table("students").select("*").eq("student_id", student_id).execute()
-            if res.data:
-                student = res.data[0]
-                total_attendance = int(student.get("total_attendance", 0)) + 1
+        if not encodings:
+            return None
 
-                supabase.table("students").update({
-                    "total_attendance": total_attendance,
-                    "last_attendance_time": datetime.now().isoformat()
-                }).eq("student_id", student_id).execute()
+        # For each face found, try to find best match (we will return first match)
+        for enc in encodings:
+            dists = face_recognition.face_distance(_known_encodings, enc) if _known_encodings else []
+            if len(dists) == 0:
+                continue
+            best_idx = int(np.argmin(dists))
+            if dists[best_idx] <= tolerance:
+                return _known_ids[best_idx]
+        return None
+    except Exception as e:
+        print("recognize_face error:", e)
+        return None
 
-                print(f"✅ Marked attendance for {student['name']} ({student_id})")
+def mark_attendance(student_id, teacher_username=None, subject=None):
+    """
+    Call Supabase RPC increment_attendance and also write attendance_logs.
+    """
+    try:
+        # 1) Insert attendance log
+        supabase.table("attendance_logs").insert({
+            "student_id": student_id,
+            "teacher": teacher_username or "",
+            "subject": subject or ""
+        }).execute()
 
-                y1, x2, y2, x1 = [v * 4 for v in loc]
-                cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(frame, student["name"], (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        # 2) Call RPC to increment total_attendance safely
+        supabase.rpc("increment_attendance", {"student_id_input": student_id}).execute()
+        print(f"Marked attendance for {student_id}")
+        return True
+    except Exception as e:
+        print("mark_attendance error:", e)
+        return False
 
-    cv2.imshow("Attendance System", frame)
-
-    if cv2.waitKey(1) & 0xFF == ord("q"):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+# Convenience function for other modules
+def recognize_and_mark(img_bytes, teacher_username=None, subject=None):
+    sid = recognize_face_from_bytes(img_bytes)
+    if sid:
+        ok = mark_attendance(sid, teacher_username, subject)
+        return sid if ok else None
+    return None

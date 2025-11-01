@@ -1,0 +1,9 @@
+app = "teacher-attendance-system"
+kill_signal = "SIGINT"
+kill_timeout = 5
+
+[build]
+  image = "dockerfile"
+
+[env]
+  PORT = "8080"
